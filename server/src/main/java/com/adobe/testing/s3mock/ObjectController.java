@@ -30,9 +30,11 @@ import static com.adobe.testing.s3mock.util.AwsHttpHeaders.X_AMZ_SERVER_SIDE_ENC
 import static com.adobe.testing.s3mock.util.AwsHttpHeaders.X_AMZ_SERVER_SIDE_ENCRYPTION_AWS_KMS_KEY_ID;
 import static com.adobe.testing.s3mock.util.AwsHttpHeaders.X_AMZ_TAGGING;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.ACL;
+import static com.adobe.testing.s3mock.util.AwsHttpParameters.ATTRIBUTES;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.DELETE;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.LEGAL_HOLD;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.NOT_ACL;
+import static com.adobe.testing.s3mock.util.AwsHttpParameters.NOT_ATTRIBUTES;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.NOT_LEGAL_HOLD;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.NOT_RETENTION;
 import static com.adobe.testing.s3mock.util.AwsHttpParameters.NOT_TAGGING;
@@ -218,7 +220,8 @@ public class ObjectController {
           NOT_TAGGING,
           NOT_LEGAL_HOLD,
           NOT_RETENTION,
-          NOT_ACL
+          NOT_ACL,
+          NOT_ATTRIBUTES
       },
       method = RequestMethod.GET,
       produces = {
@@ -488,6 +491,37 @@ public class ObjectController {
         .ok()
         .build();
   }
+
+  /**
+   * Returns the attributes for an object.
+   * <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObjectAttributes.html">API Reference</a>
+   *
+   * @param bucketName The Bucket's name
+   */
+  @RequestMapping(
+      value = "/{bucketName:[a-z0-9.-]+}/{*key}",
+      params = {
+          ATTRIBUTES
+      },
+      method = RequestMethod.GET,
+      produces = APPLICATION_XML_VALUE
+  )
+  public ResponseEntity<Retention> getObjectAttributes(@PathVariable String bucketName,
+      @PathVariable ObjectKey key,
+      @RequestHeader(value = IF_MATCH, required = false) List<String> match,
+      @RequestHeader(value = IF_NONE_MATCH, required = false) List<String> noneMatch) {
+    bucketService.verifyBucketExists(bucketName);
+
+    //this is for either an object request, or a parts request.
+
+    S3ObjectMetadata s3ObjectMetadata = objectService.verifyObjectExists(bucketName, key.getKey());
+    objectService.verifyObjectMatching(match, noneMatch, s3ObjectMetadata);
+
+    return ResponseEntity
+        .ok()
+        .body(s3ObjectMetadata.getRetention());
+  }
+
 
   /**
    * Adds an object to a bucket.
